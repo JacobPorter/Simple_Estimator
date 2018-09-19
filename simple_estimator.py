@@ -39,9 +39,11 @@ NAME_PATH = "name.txt"
 MIN_SEARCH = 2e-7
 # The acquisition function to use in Bayesian optimization.
 ACQUISITION_FUNCTION = "EI"
+# The number of random forest estimators to use.
+N_ESTIMATORS = 15
 
 
-def getPipeRFC(num_features):
+def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
     """
     Return a pipeline and a search space for a random forest classifier.
 
@@ -58,17 +60,19 @@ def getPipeRFC(num_features):
         hyperparameter optimization.
 
     """
-    rf = RandomForestClassifier()
-    search_space = {'randomforestclassifier__max_depth':
-                    Integer(2, num_features),
+    rf = RandomForestClassifier(n_estimators=n_estimators)
+    search_space = {'randomforestclassifier__n_estimators':
+                    Integer(8, 15),
                     'randomforestclassifier__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
                     'randomforestclassifier__criterion':
                     Categorical(['gini', 'entropy']),
                     'randomforestclassifier__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
                     'randomforestclassifier__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log-uniform')
+                    Real(MIN_SEARCH, 0.5, prior='uniform'),
+                    # 'randomforestclassifier__max_depth':
+                    # Integer(2, num_features),
                     }
     return (Pipeline([('ss', StandardScaler()),
                       ('randomforestclassifier', rf)]),
@@ -229,7 +233,7 @@ def getPipeEN(num_features):
             search_space)
 
 
-def getPipeRFR(num_features):
+def getPipeRFR(num_features, n_estimators=N_ESTIMATORS):
     """
     Return a pipeline and a search space for a random forest regressor.
 
@@ -246,17 +250,19 @@ def getPipeRFR(num_features):
         hyperparameter optimization.
 
     """
-    rfr = RandomForestRegressor()
-    search_space = {'randomforestregressor__max_depth':
-                    Integer(2, num_features),
+    rfr = RandomForestRegressor(n_estimators=n_estimators)
+    search_space = {'randomforestregressor__n_estimators':
+                    Integer(8, 15),
                     'randomforestregressor__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
                     'randomforestregressor__criterion':
                     Categorical(['mse', 'mae']),
                     'randomforestregressor__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
                     'randomforestregressor__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log-uniform')
+                    Real(MIN_SEARCH, 0.5, prior='uniform'),
+                    # 'randomforestregressor__max_depth':
+                    # Integer(2, num_features),
                     }
     return (Pipeline([('ss', StandardScaler()),
                       ('randomforestregressor', rfr)]),
