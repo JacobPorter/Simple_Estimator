@@ -23,8 +23,6 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.metrics import make_scorer, f1_score, accuracy_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.metrics import explained_variance_score, r2_score
-from skopt import BayesSearchCV
-from skopt.space import Real, Categorical, Integer
 
 
 # The filename to use to store the model.
@@ -36,12 +34,13 @@ FEATURE_COEFF = "feature_imp.txt"
 # The name of the estimator.
 NAME_PATH = "name.txt"
 # The minimum amount to use in a Bayesian optmization search space.
-MIN_SEARCH = 2e-7
+MIN_SEARCH = 2e-12
 # The acquisition function to use in Bayesian optimization.
 ACQUISITION_FUNCTION = "EI"
 # The number of random forest estimators to use.
 N_ESTIMATORS = 15
-
+# Controls whether the feature input has a header.
+HEADER_EXISTS = False
 
 def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
     """
@@ -60,17 +59,18 @@ def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
         hyperparameter optimization.
 
     """
+    from skopt.space import Real, Categorical, Integer
     rf = RandomForestClassifier(n_estimators=n_estimators)
     search_space = {'randomforestclassifier__n_estimators':
                     Integer(8, 15),
                     'randomforestclassifier__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
                     'randomforestclassifier__criterion':
                     Categorical(['gini', 'entropy']),
                     'randomforestclassifier__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
                     'randomforestclassifier__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='uniform'),
+                    Real(MIN_SEARCH, 0.5, prior='log_uniform'),
                     # 'randomforestclassifier__max_depth':
                     # Integer(2, num_features),
                     }
@@ -96,6 +96,7 @@ def getPipeLR(num_features):
         hyperparameter optimization.
 
     """
+    from skopt.space import Real, Categorical
     lr = LogisticRegression(solver='sag')
     search_space = {'logisticregression__C':
                     Real(MIN_SEARCH, 1.0, prior="uniform"),
@@ -123,6 +124,7 @@ def getPipeAB(num_features):
         hyperparameter optimization.
 
     """
+    from skopt.space import Integer
     ab = AdaBoostClassifier()
     search_space = {'adaboost__n_estimators': Integer(32, 256),
                     }
@@ -146,6 +148,7 @@ def getPipeRC(num_features):
         hyperparameter optimization.
 
     """
+    from skopt.space import Real
     rc = RidgeClassifier(solver='auto')
     search_space = {'ridgeclassifier__alpha':
                     Real(MIN_SEARCH, 1.0, prior="uniform")}
@@ -171,6 +174,7 @@ def getPipeLSVC(num_features):
         hyperparameter optimization.
 
     """
+    from skopt.space import Real
     lsvc = LinearSVC()
     search_space = {'supportvectorclassifier__C':
                     Real(MIN_SEARCH, 1.0, prior="uniform")
@@ -198,6 +202,7 @@ def getPipeLSVR(num_features):
         hyperparameter optimization.
 
     """
+    from skopt.space import Real
     lsvr = LinearSVR()
     search_space = {'supportvectorregressor__C':
                     Real(MIN_SEARCH, 1.0, prior="uniform")
@@ -224,6 +229,7 @@ def getPipeEN(num_features):
         hyperparameter optimization.
 
     """
+    from skopt.space import Real
     en = ElasticNet()
     search_space = {'elasticnet__alpha':
                     Real(MIN_SEARCH, 1.0, prior="uniform"),
@@ -250,17 +256,18 @@ def getPipeRFR(num_features, n_estimators=N_ESTIMATORS):
         hyperparameter optimization.
 
     """
+    from skopt.space import Real, Categorical, Integer
     rfr = RandomForestRegressor(n_estimators=n_estimators)
     search_space = {'randomforestregressor__n_estimators':
                     Integer(8, 15),
                     'randomforestregressor__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
                     'randomforestregressor__criterion':
                     Categorical(['mse', 'mae']),
                     'randomforestregressor__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
                     'randomforestregressor__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='uniform'),
+                    Real(MIN_SEARCH, 0.5, prior='log_uniform'),
                     # 'randomforestregressor__max_depth':
                     # Integer(2, num_features),
                     }
@@ -329,6 +336,7 @@ def train(features, responses, model_path, estimator='RandomForestClassifier',
         trained LabelEncoder.
 
     """
+    from skopt import BayesSearchCV
     estimator = estimator.lower()
     getPipeFunc = ESTIMATOR_CHOICES[estimator][0]
     estimator_pipe, search_space = getPipeFunc(features.shape[1])
@@ -467,7 +475,11 @@ def get_features_response(feature_path, response_path):
     responses = []
     if feature_path:
         with open(feature_path) as feature_file:
+            skip_first = HEADER_EXISTS
             for line in feature_file:
+                if skip_first:
+                    skip_first = False
+                    continue
                 observation = list(map(float, line.strip().split()))
                 features.append(observation)
     if response_path:
