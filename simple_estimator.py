@@ -360,6 +360,7 @@ def train(features, responses, model_path, estimator='RandomForestClassifier',
         cv.fit(features, responses)
     print("The best score: {}".format(cv.best_score_), file=sys.stderr)
     print("The best parameters: {}".format(cv.best_params_), file=sys.stderr)
+    sys.stderr.flush()
     if not is_regressor:
         return cv.best_estimator_, encoder
     else:
