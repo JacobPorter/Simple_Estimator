@@ -64,13 +64,13 @@ def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
     search_space = {'randomforestclassifier__n_estimators':
                     Integer(8, 15),
                     'randomforestclassifier__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
                     'randomforestclassifier__criterion':
                     Categorical(['gini', 'entropy']),
                     'randomforestclassifier__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
                     'randomforestclassifier__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log_uniform'),
+                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
                     # 'randomforestclassifier__max_depth':
                     # Integer(2, num_features),
                     }
@@ -261,13 +261,13 @@ def getPipeRFR(num_features, n_estimators=N_ESTIMATORS):
     search_space = {'randomforestregressor__n_estimators':
                     Integer(8, 15),
                     'randomforestregressor__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
                     'randomforestregressor__criterion':
                     Categorical(['mse', 'mae']),
                     'randomforestregressor__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log_uniform'),
+                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
                     'randomforestregressor__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log_uniform'),
+                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
                     # 'randomforestregressor__max_depth':
                     # Integer(2, num_features),
                     }
