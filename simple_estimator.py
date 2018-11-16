@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.linear_model import ElasticNet
 from sklearn.svm import LinearSVC, LinearSVR
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -30,7 +31,7 @@ MODEL_NAME = "model.pck"
 # The filename to use to store the LabelEncoder.
 ENCODER_NAME = "encoder.pck"
 # Feature importances or coefficients.
-FEATURE_COEFF = "feature_imp.txt"
+FEATURE_COEFF = "feature_imp_or_coeff.txt"
 # The name of the estimator.
 NAME_PATH = "name.txt"
 # The minimum amount to use in a Bayesian optmization search space.
@@ -80,6 +81,41 @@ def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
             search_space)
 
 
+def getPipeDTC(num_features):
+    """
+    Return a pipeline and a search space for a decision tree classifier.
+
+    Parameters
+    ----------
+    num_features: int
+        The number of features that the estimator will be trained on.
+
+    Returns
+    -------
+    Pipeline, dict
+        A pipeline object representing an estimator followed
+        by a dictionary representing a search space for Bayesian
+        hyperparameter optimization.
+
+    """
+    from skopt.space import Real, Categorical, Integer
+    dt = DecisionTreeClassifier()
+    search_space = {'decisiontreeclassifier__max_features':
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
+                    'decisiontreeclassifier__criterion':
+                    Categorical(['gini', 'entropy']),
+                    'decisiontreeclassifier__min_samples_split':
+                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+                    'decisiontreeclassifier__min_samples_leaf':
+                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
+                    'decisiontreeclassifier__max_depth':
+                    Integer(2, num_features),
+                    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('decisiontreeclassifier', dt)]),
+            search_space)
+
+
 def getPipeLR(num_features):
     """
     Return a pipeline and a search space for a logistic regression classifier.
@@ -108,7 +144,7 @@ def getPipeLR(num_features):
             search_space)
 
 
-def getPipeAB(num_features):
+def getPipeABF(num_features):
     """
     Return a pipeline and a search space for an AdaBoostClassifier.
 
@@ -126,19 +162,53 @@ def getPipeAB(num_features):
 
     """
     from skopt.space import Integer, Real
+    # Using a more complex random forest classifier hurt performance on a
+    # sample data set.  Perhaps some data would benefit from more complexity.
     ab = AdaBoostClassifier(
-        base_estimator=RandomForestClassifier(n_estimators=10,
+        base_estimator=RandomForestClassifier(n_estimators=5,
                                               criterion='entropy',
-                                              max_depth=None,
+                                              max_depth=1,
                                               min_samples_split=2,
                                               min_samples_leaf=1,
                                               ),
         algorithm='SAMME.R')
-    search_space = {'adaboost__n_estimators': Integer(1, 16),
-                    'adaboost__learning_rate': Real(MIN_SEARCH, 1.0,
-                                                    prior='uniform'),
+    search_space = {'adaboostforest__n_estimators': Integer(1, 32),
+                    'adaboostforest__learning_rate': Real(MIN_SEARCH, 1.0,
+                                                          prior='uniform'),
                     }
-    return Pipeline([('ss', StandardScaler()), ('adaboost', ab)]), search_space
+    return (Pipeline([('ss', StandardScaler()), ('adaboostforest', ab)]),
+            search_space)
+
+
+def getPipeABT(num_features):
+    """
+    Return a pipeline and a search space for an AdaBoostClassifier.
+
+    Parameters
+    ----------
+    num_features: int
+        The number of features that the estimator will be trained on.
+
+    Returns
+    -------
+    Pipeline, dict
+        A pipeline object representing an estimator followed
+        by a dictionary representing a search space for Bayesian
+        hyperparameter optimization.
+
+    """
+    from skopt.space import Integer, Real
+    # Using a more complex decision tree classifier hurt performance on a
+    # sample data set.  Perhaps some data would benefit from more complexity.
+    ab = AdaBoostClassifier(
+        base_estimator=DecisionTreeClassifier(max_depth=1),
+        algorithm='SAMME.R')
+    search_space = {'adaboosttree__n_estimators': Integer(5, 150),
+                    'adaboosttree__learning_rate': Real(MIN_SEARCH, 1.0,
+                                                        prior='uniform'),
+                    }
+    return (Pipeline([('ss', StandardScaler()), ('adaboosttree', ab)]),
+            search_space)
 
 
 def getPipeGB(num_features):
@@ -159,15 +229,13 @@ def getPipeGB(num_features):
 
     """
     from skopt.space import Integer, Real, Categorical
-    gb = GradientBoostingClassifier()
+    gb = GradientBoostingClassifier(loss='deviance')
     search_space = {'gradboost__n_estimators':
                     Integer(50, 150),
-                    'gradboost__loss':
-                    Categorical('deviance', 'exponential'),
                     'gradboost__max_features':
                     Real(MIN_SEARCH, 1.0, prior='uniform'),
                     'gradboost__criterion':
-                    Categorical(['friedman_mse', 'mse', 'msa']),
+                    Categorical(['friedman_mse', 'mse']),  # mae is very slow.
                     'gradboost__min_samples_split':
                     Real(MIN_SEARCH, 1.0, prior='log-uniform'),
                     'gradboost__min_samples_leaf':
@@ -175,7 +243,8 @@ def getPipeGB(num_features):
                     'gradboost__max_depth':
                     Integer(2, num_features),
                     }
-    return Pipeline(['ss', StandardScaler(), ('gradboost', gb)]), search_space
+    return (Pipeline([('ss', StandardScaler()), ('gradboost', gb)]),
+            search_space)
 
 
 def getPipeRC(num_features):
@@ -323,6 +392,41 @@ def getPipeRFR(num_features, n_estimators=N_ESTIMATORS):
             search_space)
 
 
+def getPipeDTR(num_features):
+    """
+    Return a pipeline and a search space for a decision tree regressor.
+
+    Parameters
+    ----------
+    num_features: int
+        The number of features that the estimator will be trained on.
+
+    Returns
+    -------
+    Pipeline, dict
+        A pipeline object representing an estimator followed
+        by a dictionary representing a search space for Bayesian
+        hyperparameter optimization.
+
+    """
+    from skopt.space import Real, Categorical, Integer
+    dtr = DecisionTreeRegressor()
+    search_space = {'decisiontreeregressor__max_features':
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
+                    'decisiontreeregressor__criterion':
+                    Categorical(['friedman_mse', 'mse', 'mae']),
+                    'decisiontreeregressor__min_samples_split':
+                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+                    'decisiontreeregressor__min_samples_leaf':
+                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
+                    'decisiontreeregressor__max_depth':
+                    Integer(2, num_features),
+                    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('decisiontreeregressor', dtr)]),
+            search_space)
+
+
 # The estimator choices and corresponding pipelines.
 # For position 1, a 0 indicates the classifier has a
 # feature_importances_ attribute.
@@ -331,13 +435,17 @@ def getPipeRFR(num_features, n_estimators=N_ESTIMATORS):
 # Position 3 is a 0 for a classifier and a 1 for a regressor.
 ESTIMATOR_CHOICES = {"randomforestclassifier": (getPipeRFC, 0,
                                                 'RandomForestClassifier', 0),
+                     "decisiontreeclassifier": (getPipeDTC, 0,
+                                                'DecisionTreeClassifier', 0),
                      "logisticregression": (getPipeLR, 1,
                                             'LogisticRegression', 0),
                      "ridgeclassifier": (getPipeRC, 1,
                                          'RidgeClassifier', 0),
-                     "adaboostclassifier": (getPipeAB, 0,
-                                            'AdaBoostClassifier', 0),
-                     "gradboost": (getPipeGB, 0, 'GradientBoostingClassifier',
+                     "adaboostforest": (getPipeABF, 0,
+                                        'AdaBoostForest', 0),
+                     "adaboosttree": (getPipeABT, 0,
+                                      'AdaBoostTree', 0),
+                     "gradboost": (getPipeGB, 0, 'GradBoost',
                                    0),
                      "supportvectorclassifier": (getPipeLSVC, 1,
                                                  'SupportVectorClassifier', 0),
@@ -347,6 +455,8 @@ ESTIMATOR_CHOICES = {"randomforestclassifier": (getPipeRFC, 0,
                                     'ElasticNet', 1),
                      "randomforestregressor": (getPipeRFR, 0,
                                                'RandomForestRegressor', 1),
+                     "decisiontreeregressor": (getPipeDTR, 0,
+                                               'DecisionTreeRegressor', 1)
                      }
 
 
