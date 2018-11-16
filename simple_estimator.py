@@ -13,7 +13,7 @@ import pickle
 import os
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
 from sklearn.linear_model import ElasticNet
 from sklearn.svm import LinearSVC, LinearSVR
@@ -42,6 +42,7 @@ N_ESTIMATORS = 15
 # Controls whether the feature input has a header.
 HEADER_EXISTS = False
 
+
 def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
     """
     Return a pipeline and a search space for a random forest classifier.
@@ -60,7 +61,7 @@ def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
 
     """
     from skopt.space import Real, Categorical, Integer
-    rf = RandomForestClassifier(n_estimators=n_estimators)
+    rf = RandomForestClassifier(n_estimators=n_estimators, max_depth=None)
     search_space = {'randomforestclassifier__n_estimators':
                     Integer(8, 15),
                     'randomforestclassifier__max_features':
@@ -124,11 +125,57 @@ def getPipeAB(num_features):
         hyperparameter optimization.
 
     """
-    from skopt.space import Integer
-    ab = AdaBoostClassifier()
-    search_space = {'adaboost__n_estimators': Integer(32, 256),
+    from skopt.space import Integer, Real
+    ab = AdaBoostClassifier(
+        base_estimator=RandomForestClassifier(n_estimators=10,
+                                              criterion='entropy',
+                                              max_depth=None,
+                                              min_samples_split=2,
+                                              min_samples_leaf=1,
+                                              ),
+        algorithm='SAMME.R')
+    search_space = {'adaboost__n_estimators': Integer(1, 16),
+                    'adaboost__learning_rate': Real(MIN_SEARCH, 1.0,
+                                                    prior='uniform'),
                     }
     return Pipeline([('ss', StandardScaler()), ('adaboost', ab)]), search_space
+
+
+def getPipeGB(num_features):
+    """
+    Return a pipeline and a search space for a GradientBoostingClassifier.
+
+    Parameters
+    ----------
+    num_features: int
+        The number of features that the estimator will be trained on.
+
+    Returns
+    -------
+    Pipeline, dict
+        A pipeline object representing an estimator followed
+        by a dictionary representing a search space for Bayesian
+        hyperparameter optimization.
+
+    """
+    from skopt.space import Integer, Real, Categorical
+    gb = GradientBoostingClassifier()
+    search_space = {'gradboost__n_estimators':
+                    Integer(50, 150),
+                    'gradboost__loss':
+                    Categorical('deviance', 'exponential'),
+                    'gradboost__max_features':
+                    Real(MIN_SEARCH, 1.0, prior='uniform'),
+                    'gradboost__criterion':
+                    Categorical(['friedman_mse', 'mse', 'msa']),
+                    'gradboost__min_samples_split':
+                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+                    'gradboost__min_samples_leaf':
+                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
+                    'gradboost__max_depth':
+                    Integer(2, num_features),
+                    }
+    return Pipeline(['ss', StandardScaler(), ('gradboost', gb)]), search_space
 
 
 def getPipeRC(num_features):
@@ -288,8 +335,10 @@ ESTIMATOR_CHOICES = {"randomforestclassifier": (getPipeRFC, 0,
                                             'LogisticRegression', 0),
                      "ridgeclassifier": (getPipeRC, 1,
                                          'RidgeClassifier', 0),
-                     "adaboostclassifier": (getPipeAB, 1,
+                     "adaboostclassifier": (getPipeAB, 0,
                                             'AdaBoostClassifier', 0),
+                     "gradboost": (getPipeGB, 0, 'GradientBoostingClassifier',
+                                   0),
                      "supportvectorclassifier": (getPipeLSVC, 1,
                                                  'SupportVectorClassifier', 0),
                      "supportvectorregressor": (getPipeLSVR, 1,
