@@ -560,7 +560,10 @@ def predict(model, name, features, encoder=None):
     y_predict = model.predict(features)
     if not is_regressor:
         labels = encoder.inverse_transform(y_predict)
-        proba = model.predict_proba(features)
+        try:
+            proba = model.predict_proba(features)
+        except AttributeError:
+            proba = None
         order = encoder.inverse_transform(__get_classes(model, name))
         return labels, proba, order
     else:
@@ -808,7 +811,7 @@ def main():
         model, encoder, name = load_model(args.model_path)
         is_regressor = ESTIMATOR_CHOICES[name.lower()][3]
         responses, proba, order = predict(model, name, features, encoder)
-        if not is_regressor:
+        if not is_regressor and proba:
             print("{}\t{}".format("predicted_class", "\t".join(order)))
             for label, p in zip(responses, proba):
                 print("{}\t{}".format(label,
