@@ -811,7 +811,7 @@ def main():
         model, encoder, name = load_model(args.model_path)
         is_regressor = ESTIMATOR_CHOICES[name.lower()][3]
         responses, proba, order = predict(model, name, features, encoder)
-        if not is_regressor and proba:
+        if not is_regressor and proba is not None:
             print("{}\t{}".format("predicted_class", "\t".join(order)))
             for label, p in zip(responses, proba):
                 print("{}\t{}".format(label,
