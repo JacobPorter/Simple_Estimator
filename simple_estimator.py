@@ -6,25 +6,25 @@ Train an estimator model to make predictions given features and responses.
     Jacob Porter <jsporter@vt.edu>
 """
 
-import sys
-import datetime
 import argparse
-import pickle
+import datetime
 import os
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression, RidgeClassifier
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.linear_model import ElasticNet
-from sklearn.svm import LinearSVC, LinearSVR
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.metrics import make_scorer, f1_score, accuracy_score
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.metrics import explained_variance_score, r2_score
+import pickle
+import sys
 
+import numpy as np
+from sklearn.ensemble import (AdaBoostClassifier, GradientBoostingClassifier,
+                              RandomForestClassifier, RandomForestRegressor)
+from sklearn.linear_model import (ElasticNet, LogisticRegression,
+                                  RidgeClassifier)
+from sklearn.metrics import (accuracy_score, classification_report,
+                             confusion_matrix, explained_variance_score,
+                             f1_score, make_scorer, mean_absolute_error,
+                             mean_squared_error, r2_score)
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.svm import LinearSVC, LinearSVR
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 # The filename to use to store the model.
 MODEL_NAME = "model.pck"
@@ -63,22 +63,22 @@ def getPipeRFC(num_features, n_estimators=N_ESTIMATORS):
     """
     from skopt.space import Real, Categorical, Integer
     rf = RandomForestClassifier(n_estimators=n_estimators, max_depth=None)
-    search_space = {'randomforestclassifier__n_estimators':
-                    Integer(8, 15),
-                    'randomforestclassifier__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
-                    'randomforestclassifier__criterion':
-                    Categorical(['gini', 'entropy']),
-                    'randomforestclassifier__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
-                    'randomforestclassifier__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
-                    # 'randomforestclassifier__max_depth':
-                    # Integer(2, num_features),
-                    }
+    search_space = {
+        'randomforestclassifier__n_estimators':
+        Integer(8, 15),
+        'randomforestclassifier__max_features':
+        Real(MIN_SEARCH, 1.0, prior='uniform'),
+        'randomforestclassifier__criterion':
+        Categorical(['gini', 'entropy']),
+        'randomforestclassifier__min_samples_split':
+        Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+        'randomforestclassifier__min_samples_leaf':
+        Real(MIN_SEARCH, 0.5, prior='log-uniform'),
+        # 'randomforestclassifier__max_depth':
+        # Integer(2, num_features),
+    }
     return (Pipeline([('ss', StandardScaler()),
-                      ('randomforestclassifier', rf)]),
-            search_space)
+                      ('randomforestclassifier', rf)]), search_space)
 
 
 def getPipeDTC(num_features):
@@ -100,20 +100,20 @@ def getPipeDTC(num_features):
     """
     from skopt.space import Real, Categorical, Integer
     dt = DecisionTreeClassifier()
-    search_space = {'decisiontreeclassifier__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
-                    'decisiontreeclassifier__criterion':
-                    Categorical(['gini', 'entropy']),
-                    'decisiontreeclassifier__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
-                    'decisiontreeclassifier__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
-                    'decisiontreeclassifier__max_depth':
-                    Integer(2, num_features),
-                    }
+    search_space = {
+        'decisiontreeclassifier__max_features':
+        Real(MIN_SEARCH, 1.0, prior='uniform'),
+        'decisiontreeclassifier__criterion':
+        Categorical(['gini', 'entropy']),
+        'decisiontreeclassifier__min_samples_split':
+        Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+        'decisiontreeclassifier__min_samples_leaf':
+        Real(MIN_SEARCH, 0.5, prior='log-uniform'),
+        'decisiontreeclassifier__max_depth':
+        Integer(2, num_features),
+    }
     return (Pipeline([('ss', StandardScaler()),
-                      ('decisiontreeclassifier', dt)]),
-            search_space)
+                      ('decisiontreeclassifier', dt)]), search_space)
 
 
 def getPipeLR(num_features):
@@ -135,13 +135,12 @@ def getPipeLR(num_features):
     """
     from skopt.space import Real, Categorical
     lr = LogisticRegression(solver='sag')
-    search_space = {'logisticregression__C':
-                    Real(MIN_SEARCH, 1.0, prior="uniform"),
-                    'logisticregression__multi_class':
-                    Categorical(['ovr', 'multinomial'])
-                    }
-    return (Pipeline([('ss', StandardScaler()), ('logisticregression', lr)]),
-            search_space)
+    search_space = {
+        'logisticregression__C': Real(MIN_SEARCH, 1.0, prior="uniform"),
+        'logisticregression__multi_class': Categorical(['ovr', 'multinomial'])
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('logisticregression', lr)]), search_space)
 
 
 def getPipeABF(num_features):
@@ -164,20 +163,21 @@ def getPipeABF(num_features):
     from skopt.space import Integer, Real
     # Using a more complex random forest classifier hurt performance on a
     # sample data set.  Perhaps some data would benefit from more complexity.
-    ab = AdaBoostClassifier(
-        base_estimator=RandomForestClassifier(n_estimators=5,
-                                              criterion='entropy',
-                                              max_depth=1,
-                                              min_samples_split=2,
-                                              min_samples_leaf=1,
-                                              ),
-        algorithm='SAMME.R')
-    search_space = {'adaboostforest__n_estimators': Integer(1, 32),
-                    'adaboostforest__learning_rate': Real(MIN_SEARCH, 1.0,
-                                                          prior='uniform'),
-                    }
-    return (Pipeline([('ss', StandardScaler()), ('adaboostforest', ab)]),
-            search_space)
+    ab = AdaBoostClassifier(base_estimator=RandomForestClassifier(
+        n_estimators=5,
+        criterion='entropy',
+        max_depth=1,
+        min_samples_split=2,
+        min_samples_leaf=1,
+    ),
+                            algorithm='SAMME.R')
+    search_space = {
+        'adaboostforest__n_estimators': Integer(1, 32),
+        'adaboostforest__learning_rate': Real(MIN_SEARCH, 1.0,
+                                              prior='uniform'),
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('adaboostforest', ab)]), search_space)
 
 
 def getPipeABT(num_features):
@@ -200,15 +200,14 @@ def getPipeABT(num_features):
     from skopt.space import Integer, Real
     # Using a more complex decision tree classifier hurt performance on a
     # sample data set.  Perhaps some data would benefit from more complexity.
-    ab = AdaBoostClassifier(
-        base_estimator=DecisionTreeClassifier(max_depth=1),
-        algorithm='SAMME.R')
-    search_space = {'adaboosttree__n_estimators': Integer(5, 150),
-                    'adaboosttree__learning_rate': Real(MIN_SEARCH, 1.0,
-                                                        prior='uniform'),
-                    }
-    return (Pipeline([('ss', StandardScaler()), ('adaboosttree', ab)]),
-            search_space)
+    ab = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=1),
+                            algorithm='SAMME.R')
+    search_space = {
+        'adaboosttree__n_estimators': Integer(5, 150),
+        'adaboosttree__learning_rate': Real(MIN_SEARCH, 1.0, prior='uniform'),
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('adaboosttree', ab)]), search_space)
 
 
 def getPipeGB(num_features):
@@ -230,21 +229,21 @@ def getPipeGB(num_features):
     """
     from skopt.space import Integer, Real, Categorical
     gb = GradientBoostingClassifier(loss='deviance')
-    search_space = {'gradboost__n_estimators':
-                    Integer(50, 150),
-                    'gradboost__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
-                    'gradboost__criterion':
-                    Categorical(['friedman_mse', 'mse']),  # mae is very slow.
-                    'gradboost__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
-                    'gradboost__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
-                    'gradboost__max_depth':
-                    Integer(2, num_features),
-                    }
-    return (Pipeline([('ss', StandardScaler()), ('gradboost', gb)]),
-            search_space)
+    search_space = {
+        'gradboost__n_estimators': Integer(50, 150),
+        'gradboost__max_features': Real(MIN_SEARCH, 1.0, prior='uniform'),
+        'gradboost__criterion': Categorical(['friedman_mse',
+                                             'mse']),  # mae is very slow.
+        'gradboost__min_samples_split': Real(MIN_SEARCH,
+                                             1.0,
+                                             prior='log-uniform'),
+        'gradboost__min_samples_leaf': Real(MIN_SEARCH,
+                                            0.5,
+                                            prior='log-uniform'),
+        'gradboost__max_depth': Integer(2, num_features),
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('gradboost', gb)]), search_space)
 
 
 def getPipeRC(num_features):
@@ -266,10 +265,11 @@ def getPipeRC(num_features):
     """
     from skopt.space import Real
     rc = RidgeClassifier(solver='auto')
-    search_space = {'ridgeclassifier__alpha':
-                    Real(MIN_SEARCH, 1.0, prior="uniform")}
-    return (Pipeline([('ss', StandardScaler()), ('ridgeclassifier', rc)]),
-            search_space)
+    search_space = {
+        'ridgeclassifier__alpha': Real(MIN_SEARCH, 1.0, prior="uniform")
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('ridgeclassifier', rc)]), search_space)
 
 
 def getPipeLSVC(num_features):
@@ -292,12 +292,11 @@ def getPipeLSVC(num_features):
     """
     from skopt.space import Real
     lsvc = LinearSVC()
-    search_space = {'supportvectorclassifier__C':
-                    Real(MIN_SEARCH, 1.0, prior="uniform")
-                    }
-    return (Pipeline([('ss', StandardScaler()), ('supportvectorclassifier',
-                                                 lsvc)]),
-            search_space)
+    search_space = {
+        'supportvectorclassifier__C': Real(MIN_SEARCH, 1.0, prior="uniform")
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('supportvectorclassifier', lsvc)]), search_space)
 
 
 def getPipeLSVR(num_features):
@@ -320,12 +319,11 @@ def getPipeLSVR(num_features):
     """
     from skopt.space import Real
     lsvr = LinearSVR()
-    search_space = {'supportvectorregressor__C':
-                    Real(MIN_SEARCH, 1.0, prior="uniform")
-                    }
-    return (Pipeline([('ss', StandardScaler()), ('supportvectorregressor',
-                                                 lsvr)]),
-            search_space)
+    search_space = {
+        'supportvectorregressor__C': Real(MIN_SEARCH, 1.0, prior="uniform")
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('supportvectorregressor', lsvr)]), search_space)
 
 
 def getPipeEN(num_features):
@@ -347,12 +345,12 @@ def getPipeEN(num_features):
     """
     from skopt.space import Real
     en = ElasticNet()
-    search_space = {'elasticnet__alpha':
-                    Real(MIN_SEARCH, 1.0, prior="uniform"),
-                    'elasticnet__l1_ratio':
-                    Real(MIN_SEARCH, 1.0, prior="uniform")}
-    return (Pipeline([('ss', StandardScaler()), ('elasticnet', en)]),
-            search_space)
+    search_space = {
+        'elasticnet__alpha': Real(MIN_SEARCH, 1.0, prior="uniform"),
+        'elasticnet__l1_ratio': Real(MIN_SEARCH, 1.0, prior="uniform")
+    }
+    return (Pipeline([('ss', StandardScaler()),
+                      ('elasticnet', en)]), search_space)
 
 
 def getPipeRFR(num_features, n_estimators=N_ESTIMATORS):
@@ -374,22 +372,22 @@ def getPipeRFR(num_features, n_estimators=N_ESTIMATORS):
     """
     from skopt.space import Real, Categorical, Integer
     rfr = RandomForestRegressor(n_estimators=n_estimators)
-    search_space = {'randomforestregressor__n_estimators':
-                    Integer(8, 15),
-                    'randomforestregressor__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
-                    'randomforestregressor__criterion':
-                    Categorical(['mse', 'mae']),
-                    'randomforestregressor__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
-                    'randomforestregressor__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
-                    # 'randomforestregressor__max_depth':
-                    # Integer(2, num_features),
-                    }
+    search_space = {
+        'randomforestregressor__n_estimators':
+        Integer(8, 15),
+        'randomforestregressor__max_features':
+        Real(MIN_SEARCH, 1.0, prior='uniform'),
+        'randomforestregressor__criterion':
+        Categorical(['mse', 'mae']),
+        'randomforestregressor__min_samples_split':
+        Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+        'randomforestregressor__min_samples_leaf':
+        Real(MIN_SEARCH, 0.5, prior='log-uniform'),
+        # 'randomforestregressor__max_depth':
+        # Integer(2, num_features),
+    }
     return (Pipeline([('ss', StandardScaler()),
-                      ('randomforestregressor', rfr)]),
-            search_space)
+                      ('randomforestregressor', rfr)]), search_space)
 
 
 def getPipeDTR(num_features):
@@ -411,20 +409,20 @@ def getPipeDTR(num_features):
     """
     from skopt.space import Real, Categorical, Integer
     dtr = DecisionTreeRegressor()
-    search_space = {'decisiontreeregressor__max_features':
-                    Real(MIN_SEARCH, 1.0, prior='uniform'),
-                    'decisiontreeregressor__criterion':
-                    Categorical(['friedman_mse', 'mse', 'mae']),
-                    'decisiontreeregressor__min_samples_split':
-                    Real(MIN_SEARCH, 1.0, prior='log-uniform'),
-                    'decisiontreeregressor__min_samples_leaf':
-                    Real(MIN_SEARCH, 0.5, prior='log-uniform'),
-                    'decisiontreeregressor__max_depth':
-                    Integer(2, num_features),
-                    }
+    search_space = {
+        'decisiontreeregressor__max_features':
+        Real(MIN_SEARCH, 1.0, prior='uniform'),
+        'decisiontreeregressor__criterion':
+        Categorical(['friedman_mse', 'mse', 'mae']),
+        'decisiontreeregressor__min_samples_split':
+        Real(MIN_SEARCH, 1.0, prior='log-uniform'),
+        'decisiontreeregressor__min_samples_leaf':
+        Real(MIN_SEARCH, 0.5, prior='log-uniform'),
+        'decisiontreeregressor__max_depth':
+        Integer(2, num_features),
+    }
     return (Pipeline([('ss', StandardScaler()),
-                      ('decisiontreeregressor', dtr)]),
-            search_space)
+                      ('decisiontreeregressor', dtr)]), search_space)
 
 
 # The estimator choices and corresponding pipelines.
@@ -433,35 +431,30 @@ def getPipeDTR(num_features):
 # For position 1, a 1 indicates the classifier has a coef_ attribute.
 # Position 2 is the more readable name of the estimator.
 # Position 3 is a 0 for a classifier and a 1 for a regressor.
-ESTIMATOR_CHOICES = {"randomforestclassifier": (getPipeRFC, 0,
-                                                'RandomForestClassifier', 0),
-                     "decisiontreeclassifier": (getPipeDTC, 0,
-                                                'DecisionTreeClassifier', 0),
-                     "logisticregression": (getPipeLR, 1,
-                                            'LogisticRegression', 0),
-                     "ridgeclassifier": (getPipeRC, 1,
-                                         'RidgeClassifier', 0),
-                     "adaboostforest": (getPipeABF, 0,
-                                        'AdaBoostForest', 0),
-                     "adaboosttree": (getPipeABT, 0,
-                                      'AdaBoostTree', 0),
-                     "gradboost": (getPipeGB, 0, 'GradBoost',
-                                   0),
-                     "supportvectorclassifier": (getPipeLSVC, 1,
-                                                 'SupportVectorClassifier', 0),
-                     "supportvectorregressor": (getPipeLSVR, 1,
-                                                'SupportVectorRegressor', 1),
-                     "elasticnet": (getPipeEN, 1,
-                                    'ElasticNet', 1),
-                     "randomforestregressor": (getPipeRFR, 0,
-                                               'RandomForestRegressor', 1),
-                     "decisiontreeregressor": (getPipeDTR, 0,
-                                               'DecisionTreeRegressor', 1)
-                     }
+ESTIMATOR_CHOICES = {
+    "randomforestclassifier": (getPipeRFC, 0, 'RandomForestClassifier', 0),
+    "decisiontreeclassifier": (getPipeDTC, 0, 'DecisionTreeClassifier', 0),
+    "logisticregression": (getPipeLR, 1, 'LogisticRegression', 0),
+    "ridgeclassifier": (getPipeRC, 1, 'RidgeClassifier', 0),
+    "adaboostforest": (getPipeABF, 0, 'AdaBoostForest', 0),
+    "adaboosttree": (getPipeABT, 0, 'AdaBoostTree', 0),
+    "gradboost": (getPipeGB, 0, 'GradBoost', 0),
+    "supportvectorclassifier": (getPipeLSVC, 1, 'SupportVectorClassifier', 0),
+    "supportvectorregressor": (getPipeLSVR, 1, 'SupportVectorRegressor', 1),
+    "elasticnet": (getPipeEN, 1, 'ElasticNet', 1),
+    "randomforestregressor": (getPipeRFR, 0, 'RandomForestRegressor', 1),
+    "decisiontreeregressor": (getPipeDTR, 0, 'DecisionTreeRegressor', 1)
+}
 
 
-def train(features, responses, model_path, estimator='RandomForestClassifier',
-          iterations=25, folds=3, processes=3, verbose=0):
+def train(features,
+          responses,
+          model_path,
+          estimator='RandomForestClassifier',
+          iterations=25,
+          folds=3,
+          processes=3,
+          verbose=0):
     """
     Train the model.
 
@@ -509,8 +502,12 @@ def train(features, responses, model_path, estimator='RandomForestClassifier',
         responses = np.asarray(responses)
         scoring = make_scorer(mean_squared_error, greater_is_better=False)
     optimizer_kwargs = {'acq_func': ACQUISITION_FUNCTION}
-    cv = BayesSearchCV(estimator_pipe, search_space, cv=folds,
-                       verbose=verbose, n_iter=iterations, n_jobs=processes,
+    cv = BayesSearchCV(estimator_pipe,
+                       search_space,
+                       cv=folds,
+                       verbose=verbose,
+                       n_iter=iterations,
+                       n_jobs=processes,
                        optimizer_kwargs=optimizer_kwargs,
                        scoring=scoring)
     if not is_regressor:
@@ -596,14 +593,21 @@ def evaluate(model, name, features, responses, encoder=None):
     y_predict, _, _ = predict(model, name, features, encoder)
     if not is_regressor:
         labels = list(encoder.classes_)
-        my_confusion_matrix = confusion_matrix(responses, y_predict,
+        my_confusion_matrix = confusion_matrix(responses,
+                                               y_predict,
                                                labels=labels)
-        my_report = classification_report(responses, y_predict,
-                                          target_names=labels, digits=8)
+        my_report = classification_report(responses,
+                                          y_predict,
+                                          target_names=labels,
+                                          digits=8)
         acc = accuracy_score(responses, y_predict)
         f1 = f1_score(responses, y_predict, labels=labels, average='weighted')
-        return {"acc": acc, "f1": f1, "confusion_matrix": my_confusion_matrix,
-                "classification_report": my_report}
+        return {
+            "acc": acc,
+            "f1": f1,
+            "confusion_matrix": my_confusion_matrix,
+            "classification_report": my_report
+        }
     else:
         responses = [float(response) for response in responses]
         responses = np.asarray(responses)
@@ -611,10 +615,12 @@ def evaluate(model, name, features, responses, encoder=None):
         mae = mean_absolute_error(responses, y_predict)
         mse = mean_squared_error(responses, y_predict)
         r2 = r2_score(responses, y_predict)
-        return {"Explained variance": evs,
-                "Mean absolute error": mae,
-                "Mean squared error": mse,
-                "R2": r2}
+        return {
+            "Explained variance": evs,
+            "Mean absolute error": mae,
+            "Mean squared error": mse,
+            "R2": r2
+        }
 
 
 def get_features_response(feature_path, response_path):
@@ -707,17 +713,15 @@ def save_model(model, encoder, name, model_path):
 
     """
     name = name.lower()
-    pickle.dump(model, open(os.path.join(model_path,
-                                         MODEL_NAME), 'wb'))
+    pickle.dump(model, open(os.path.join(model_path, MODEL_NAME), 'wb'))
     pickle.dump(encoder, open(os.path.join(model_path, ENCODER_NAME), 'wb'))
     print(name, file=open(os.path.join(model_path, NAME_PATH), 'w'))
-    print(str(__get_feature_imp(model, name)), file=open(
-        os.path.join(model_path, FEATURE_COEFF), 'w'))
+    print(str(__get_feature_imp(model, name)),
+          file=open(os.path.join(model_path, FEATURE_COEFF), 'w'))
 
 
 class ArgClass:
     """An argument class for commands."""
-
     def __init__(self, *args, **kwargs):
         """Store arguments."""
         self.args = args
@@ -727,70 +731,91 @@ class ArgClass:
 def main():
     """Parse arguments."""
     tick = datetime.datetime.now()
-    parser = argparse.ArgumentParser(description=("Train, predict, and "
-                                                  "evaluate a random forest "
-                                                  "model."),
-                                     formatter_class=argparse.
-                                     ArgumentDefaultsHelpFormatter)
-    estimator = ArgClass("-e", "--estimator", type=str,
-                         choices=[ESTIMATOR_CHOICES[c][2]
-                                  for c in ESTIMATOR_CHOICES],
-                         help=("The estimator to use."),
-                         default='RandomForestClassifier')
-    iterations = ArgClass("-i", "--iterations", type=int,
+    parser = argparse.ArgumentParser(
+        description=("Train, predict, and "
+                     "evaluate a scikit learn "
+                     "estimators using "
+                     "Uses bayesian optimization "
+                     "for hyperparameter tuning. "),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    estimator = ArgClass(
+        "-e",
+        "--estimator",
+        type=str,
+        choices=[ESTIMATOR_CHOICES[c][2] for c in ESTIMATOR_CHOICES],
+        help=("The estimator to use."),
+        default='RandomForestClassifier')
+    iterations = ArgClass("-i",
+                          "--iterations",
+                          type=int,
                           help="Iterations of Bayesian optimization to do.",
                           default=25)
-    folds = ArgClass("-f", "--folds", type=int,
+    folds = ArgClass("-f",
+                     "--folds",
+                     type=int,
                      help="The number of folds of cross validation to do.",
                      default=3)
-    processes = ArgClass("-p", "--processes", type=int,
+    processes = ArgClass("-p",
+                         "--processes",
+                         type=int,
                          help="The number of processes to do training on.",
                          default=3)
-    verbose = ArgClass("-v", "--verbose", type=int,
+    verbose = ArgClass("-v",
+                       "--verbose",
+                       type=int,
                        help="Controls the verbosity of the estimator.",
                        default=2)
     subparsers = parser.add_subparsers(help="sub-commands", dest="mode")
-    parser_train = subparsers.add_parser("train", help="Train the model.",
-                                         formatter_class=argparse.
-                                         ArgumentDefaultsHelpFormatter)
-    parser_train.add_argument("model_path", type=str,
+    parser_train = subparsers.add_parser(
+        "train",
+        help="Train the model.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_train.add_argument("model_path",
+                              type=str,
                               help=("The location where the "
                                     "model is stored. "))
-    parser_train.add_argument("feature_path", type=str,
+    parser_train.add_argument("feature_path",
+                              type=str,
                               help=("The location of the features data."))
-    parser_train.add_argument("response_path", type=str,
+    parser_train.add_argument("response_path",
+                              type=str,
                               help=("The location of the response data."))
     parser_train.add_argument(*estimator.args, **estimator.kwargs)
     parser_train.add_argument(*iterations.args, **iterations.kwargs)
     parser_train.add_argument(*folds.args, **folds.kwargs)
     parser_train.add_argument(*processes.args, **processes.kwargs)
     parser_train.add_argument(*verbose.args, **verbose.kwargs)
-    parser_predict = subparsers.add_parser("predict",
-                                           help=("Make predictions "
-                                                 "given a saved model. "
-                                                 "The predictions are "
-                                                 "written to stdout."),
-                                           formatter_class=argparse.
-                                           ArgumentDefaultsHelpFormatter)
-    parser_predict.add_argument("model_path", type=str,
+    parser_predict = subparsers.add_parser(
+        "predict",
+        help=("Make predictions "
+              "given a saved model. "
+              "The predictions are "
+              "written to stdout."),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_predict.add_argument("model_path",
+                                type=str,
                                 help=("The location where the "
                                       "model is stored. "))
-    parser_predict.add_argument("feature_path", type=str,
+    parser_predict.add_argument("feature_path",
+                                type=str,
                                 help=("The location of the features data."))
-    parser_evaluate = subparsers.add_parser("evaluate",
-                                            help=("Make predictions and "
-                                                  "evaluate their predictive "
-                                                  "performance.  "
-                                                  "The evaluation is "
-                                                  "written to stdout. "),
-                                            formatter_class=argparse.
-                                            ArgumentDefaultsHelpFormatter)
-    parser_evaluate.add_argument("model_path", type=str,
+    parser_evaluate = subparsers.add_parser(
+        "evaluate",
+        help=("Make predictions and "
+              "evaluate their predictive "
+              "performance.  "
+              "The evaluation is "
+              "written to stdout. "),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_evaluate.add_argument("model_path",
+                                 type=str,
                                  help=("The location where the "
                                        "model is stored. "))
-    parser_evaluate.add_argument("feature_path", type=str,
+    parser_evaluate.add_argument("feature_path",
+                                 type=str,
                                  help=("The location of the features data."))
-    parser_evaluate.add_argument("response_path", type=str,
+    parser_evaluate.add_argument("response_path",
+                                 type=str,
                                  help=("The location of the response data."))
     args = parser.parse_args()
     print(args, file=sys.stderr)
@@ -800,10 +825,13 @@ def main():
     if mode == "train":
         features, response = get_features_response(args.feature_path,
                                                    args.response_path)
-        model, encoder = train(features, response, args.model_path,
+        model, encoder = train(features,
+                               response,
+                               args.model_path,
                                estimator=args.estimator,
                                iterations=args.iterations,
-                               folds=args.folds, processes=args.processes,
+                               folds=args.folds,
+                               processes=args.processes,
                                verbose=args.verbose)
         save_model(model, encoder, args.estimator, args.model_path)
     elif mode == "predict":
@@ -815,8 +843,8 @@ def main():
             print("{}\t{}".format("predicted_class", "\t".join(order)))
             for label, p in zip(responses, proba):
                 print("{}\t{}".format(label,
-                                      str(p).replace("[", "").
-                                      replace("]", "")))
+                                      str(p).replace("[", "").replace("]",
+                                                                      "")))
         else:
             print("Response")
             for item in responses:
@@ -825,8 +853,8 @@ def main():
         features, responses = get_features_response(args.feature_path,
                                                     args.response_path)
         model, encoder, name = load_model(args.model_path)
-        evaluation_reports = evaluate(model, name, features,
-                                      responses, encoder)
+        evaluation_reports = evaluate(model, name, features, responses,
+                                      encoder)
         for report in evaluation_reports:
             print(report)
             print(evaluation_reports[report])
