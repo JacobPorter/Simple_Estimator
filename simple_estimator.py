@@ -764,7 +764,7 @@ def main():
                        "--verbose",
                        type=int,
                        help="Controls the verbosity of the estimator.",
-                       default=2)
+                       default=10)
     subparsers = parser.add_subparsers(help="sub-commands", dest="mode")
     parser_train = subparsers.add_parser(
         "train",
