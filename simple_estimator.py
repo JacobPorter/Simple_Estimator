@@ -12,7 +12,7 @@ import os
 import pickle
 import sys
 
-import numpy as np
+from numpy import asarray
 from sklearn.ensemble import (AdaBoostClassifier, GradientBoostingClassifier,
                               RandomForestClassifier, RandomForestRegressor)
 from sklearn.linear_model import (ElasticNet, LogisticRegression,
@@ -499,7 +499,7 @@ def train(features,
         scoring = make_scorer(accuracy_score)
     else:
         responses = [float(response) for response in responses]
-        responses = np.asarray(responses)
+        responses = asarray(responses)
         scoring = make_scorer(mean_squared_error, greater_is_better=False)
     optimizer_kwargs = {'acq_func': ACQUISITION_FUNCTION}
     cv = BayesSearchCV(estimator_pipe,
@@ -610,7 +610,7 @@ def evaluate(model, name, features, responses, encoder=None):
         }
     else:
         responses = [float(response) for response in responses]
-        responses = np.asarray(responses)
+        responses = asarray(responses)
         evs = explained_variance_score(responses, y_predict)
         mae = mean_absolute_error(responses, y_predict)
         mse = mean_squared_error(responses, y_predict)
@@ -654,7 +654,7 @@ def get_features_response(feature_path, response_path):
     if response_path:
         with open(response_path) as response_file:
             responses = [line.strip() for line in response_file]
-    return np.asarray(features), responses
+    return asarray(features), responses
 
 
 def load_model(model_path):
